@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <title>Grade Calculator</title>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #530202, #300101);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            display: flex;
+            min-height: 100vh;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            max-width: 800px;
+            width: 100%;
+            border: 2px solid #ccc;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        form {
+            background-color: rgba(129, 107, 6, 0.9);
+            padding: 30px;
+            border-radius: 12px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: rgb(230, 230, 230);
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input[type="number"] {
+            width: calc(100% - 16px);
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        input[type="number"]:focus {
+            border-color: #c4c4c4;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4d0309;
+            color: rgb(151, 126, 13);
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .result {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 400px;
+            margin-left: 20px;
+            display: none;
+        }
+
+        .result ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .result li {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <form id="gradeForm">
+            <h1>Grade Calculator</h1>
+            <input type="number" id="absences" name="absences" min="0" required placeholder="Number of absences">
+            <input type="number" id="prelim" name="prelim" step="0.01" min="0" max="100" required placeholder="Prelim Exam Grade">
+            <input type="number" id="quizzes" name="quizzes" step="0.01" min="0" max="100" required placeholder="Quizzes Grade">
+            <input type="number" id="requirements" name="requirements" step="0.01" min="0" max="100" required placeholder="Requirements Grade">
+            <input type="number" id="recitation" name="recitation" step="0.01" min="0" max="100" required placeholder="Recitation Grade">
+            <button type="button" id="calculateBtn">Calculate</button>
+
+            <div id="error" class="error"></div>
+        </form>
+
+        <div id="result" class="result">
+            <ul>
+                <li><strong>Prelim Grade:</strong> <span id="prelimGrade"></span></li>
+                <li id="combinedGrade"></li>                           
+            </ul>
+        </div>
+    </div>
+
+    <py-script>
+        from pyscript import Element
+
+        def reset_result():
+            Element("result").element.style.display = "none"
+            Element("error").element.innerHTML = ""
+            Element("prelimGrade").element.innerHTML = ""
+            Element("combinedGrade").element.innerHTML = ""
+
+        def calculate_grade(event):
+            event.preventDefault()
+            reset_result()
+
+            try:
+                absences = int(Element("absences").element.value)
+                prelim = float(Element("prelim").element.value)
+                quizzes = float(Element("quizzes").element.value)
+                requirements = float(Element("requirements").element.value)
+                recitation = float(Element("recitation").element.value)
+
+                # Check for valid ranges
+                if absences < 0:
+                    Element("error").element.innerHTML = "Absences must be 0-4."
+                    return
+                if prelim < 0 or quizzes < 0 or requirements < 0 or recitation < 0:
+                    Element("error").element.innerHTML = "Grades must be greater than or equal to 0."
+                    return
+                if prelim > 100 or quizzes > 100 or requirements > 100 or recitation > 100:
+                    Element("error").element.innerHTML = "Grades must be less than or equal to 100."
+                    return
+
+            except ValueError:
+                Element("error").element.innerHTML = "Please enter a valid grade from 0-100."
+                return
+
+            if absences >= 4:
+                Element("combinedGrade").element.innerHTML = "FAILED"
+                Element("result").element.style.display = "block"
+                return
+
+            # Attendance Calculation
+            attendance_grade = 100 - (absences * 10)
+
+            # Class Standing Calculation
+            class_standing = 0.4 * quizzes + 0.3 * requirements + 0.3 * recitation
+
+            # Prelim Grade Calculation
+            prelim_grade = 0.6 * prelim + 0.1 * attendance_grade + 0.3 * class_standing
+
+            # Required Grades Calculation for 75% overall
+            required_overall_75 = 75
+            required_grade_75 = (required_overall_75 - (0.2 * prelim_grade)) / 0.8
+
+            # Required Grades Calculation for 90% overall
+            required_overall_90 = 90
+            required_grade_90 = (required_overall_90 - (0.2 * prelim_grade)) / 0.8
+
+            # Check for exceeding 100% for 75%
+            if required_grade_75 > 100:
+                combined_message_75 = "Required grade for 75% exceeds 100%."
+            else:
+                combined_message_75 = f"To pass with 75%, you need a Midterm grade of {required_grade_75:.2f}% and a Final grade of {required_grade_75:.2f}%. "
+
+            # Check for exceeding 100% for 90%
+            if required_grade_90 > 100:
+                combined_message_90 = "Required grade for 90% exceeds 100%."
+            else:
+                combined_message_90 = f"To achieve 90%, you need a Midterm grade of {required_grade_90:.2f}% and a Final grade of {required_grade_90:.2f}%. "
+
+            Element("prelimGrade").element.innerHTML = f"{prelim_grade:.2f}%"
+            Element("combinedGrade").element.innerHTML = combined_message_75 + "<br><br>" + combined_message_90
+
+            Element("result").element.style.display = "block"
+
+        Element("calculateBtn").element.onclick = calculate_grade
+    </py-script>
+</body>
+</html>
